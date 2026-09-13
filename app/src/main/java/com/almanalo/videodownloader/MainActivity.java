@@ -1,234 +1,98 @@
-package com.almanalo.videodownloader;
+if (success) {
 
-import android.app.Activity;
-import android.os.Bundle;
-import android.content.ClipboardManager;
-import android.content.Context;
-import android.view.View;
-import android.widget.*;
+    statusText.setText(
 
-import org.json.JSONObject;
+        "DOWNLOAD COMPLETE! ✅\n\n" +
 
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+        "File:\n" +
+        downloadedFile +
 
+        "\n\nSaved to:\n" +
+        folder +
 
-public class MainActivity extends Activity {
+        "\n\n▶ CLICK HERE TO WATCH VIDEO"
 
-    EditText urlInput;
-    Button pasteButton;
-    Button downloadButton;
-    Spinner qualitySpinner;
-    ProgressBar progressBar;
-    TextView statusText;
-
-    final String SERVER_URL =
-            "http://127.0.0.1:5000/download";
+    );
 
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-
-        super.onCreate(savedInstanceState);
-
-        setContentView(R.layout.activity_main);
+    // Make the message clickable
+    statusText.setClickable(true);
 
 
-        urlInput = findViewById(R.id.urlInput);
-        pasteButton = findViewById(R.id.pasteButton);
-        downloadButton = findViewById(R.id.downloadButton);
-        qualitySpinner = findViewById(R.id.qualitySpinner);
-        progressBar = findViewById(R.id.progressBar);
-        statusText = findViewById(R.id.statusText);
+    statusText.setOnClickListener(v -> {
+
+        try {
+
+            File videoFile = new File(
+
+                "/storage/emulated/0/Download/" +
+                downloadedFile
+
+            );
 
 
-        String[] qualities = {
-                "best",
-                "720",
-                "480",
-                "360"
-        };
+            Uri videoUri = FileProvider.getUriForFile(
+
+                MainActivity.this,
+
+                getPackageName() + ".fileprovider",
+
+                videoFile
+
+            );
 
 
-        ArrayAdapter<String> adapter =
-                new ArrayAdapter<>(
+            Intent intent = new Intent(
 
-                        this,
+                Intent.ACTION_VIEW
 
-                        android.R.layout.simple_spinner_dropdown_item,
-
-                        qualities
-                );
+            );
 
 
-        qualitySpinner.setAdapter(adapter);
+            intent.setDataAndType(
+
+                videoUri,
+
+                "video/*"
+
+            );
 
 
-        pasteButton.setOnClickListener(v -> pasteLink());
+            intent.addFlags(
+
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+
+            );
 
 
-        downloadButton.setOnClickListener(v -> startDownload());
+            startActivity(
 
-    }
+                Intent.createChooser(
 
+                    intent,
 
-    private void pasteLink() {
+                    "Watch Video"
 
-        ClipboardManager clipboard =
-                (ClipboardManager)
-                        getSystemService(
-                                Context.CLIPBOARD_SERVICE
-                        );
+                )
 
-
-        if (clipboard.hasPrimaryClip()) {
-
-            CharSequence text =
-                    clipboard
-                            .getPrimaryClip()
-                            .getItemAt(0)
-                            .coerceToText(this);
+            );
 
 
-            if (text != null) {
-
-                urlInput.setText(text);
-
-            }
-
-        }
-
-    }
-
-
-    private void startDownload() {
-
-        String videoUrl =
-                urlInput.getText()
-                        .toString()
-                        .trim();
-
-
-        if (videoUrl.isEmpty()) {
+        } catch (Exception e) {
 
             Toast.makeText(
-                    this,
-                    "Please paste a video link",
-                    Toast.LENGTH_SHORT
-            ).show();
 
-            return;
+                MainActivity.this,
+
+                "Cannot open video: " +
+                e.getMessage(),
+
+                Toast.LENGTH_LONG
+
+            ).show();
 
         }
 
-
-        progressBar.setVisibility(View.VISIBLE);
-
-        statusText.setText("Downloading...");
-
-        downloadButton.setEnabled(false);
-
-
-        String quality =
-                qualitySpinner
-                        .getSelectedItem()
-                        .toString();
-
-
-        new Thread(() -> {
-
-            try {
-
-                URL url = new URL(SERVER_URL);
-
-
-                HttpURLConnection connection =
-                        (HttpURLConnection)
-                                url.openConnection();
-
-
-                connection.setRequestMethod("POST");
-
-                connection.setRequestProperty(
-                        "Content-Type",
-                        "application/json"
-                );
-
-
-                connection.setConnectTimeout(10000);
-
-                connection.setReadTimeout(600000);
-
-                connection.setDoOutput(true);
-
-
-                JSONObject json = new JSONObject();
-
-                json.put("url", videoUrl);
-
-                json.put("quality", quality);
-
-
-                OutputStream output =
-                        connection.getOutputStream();
-
-
-                output.write(
-                        json.toString().getBytes("UTF-8")
-                );
-
-
-                output.close();
-
-
-                int responseCode =
-                        connection.getResponseCode();
-
-
-                runOnUiThread(() -> {
-
-                    progressBar.setVisibility(View.GONE);
-
-                    downloadButton.setEnabled(true);
-
-
-                    if (responseCode == 200) {
-
-                        statusText.setText(
-                                "Download Complete!\n\n" +
-                                "Saved in Downloads/VideoDownloader"
-                        );
-
-                    } else {
-
-                        statusText.setText(
-                                "Download failed"
-                        );
-
-                    }
-
-                });
-
-
-            } catch (Exception e) {
-
-                runOnUiThread(() -> {
-
-                    progressBar.setVisibility(View.GONE);
-
-                    downloadButton.setEnabled(true);
-
-                    statusText.setText(
-                            "Error: " + e.getMessage()
-                    );
-
-                });
-
-            }
-
-        }).start();
-
-    }
+    });
 
 }
